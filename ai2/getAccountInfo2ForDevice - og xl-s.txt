@@ -1,0 +1,8 @@
+305     200 1   4	
+288   WEATHER2	 	 	0	0	0	Weather	WEATHER2	1	0	 
+BUDDY	 	 	0	0	1	Unknown Product Name [9198]	BUDDY	1	0	 
+SPD_SD	 	 	0	0	0	QuickGPSfix	SD	1	0	 
+SPD_PD	 	 	0	1	0	Free POIs	PD	1	0	 
+SPD_MD	 	 	0	1	0	Free Maps	MD	1	0	 
+SPD_VD	 	 	0	1	0	Free Voices	VD	1	0	 
+SPD_DD	 	 	0	0	0	Dynamic Download	DD	1	0	 
