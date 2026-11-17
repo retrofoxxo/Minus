@@ -2,52 +2,57 @@
 /*
  * www.ttcode.com/apn/bin_test.php  -  emulation of the "TEST_BIN" service
  *
- * Derived from /bin/ttn (APN wizard, CAPNWizard state machine) in
+ * Derived from /bin/ttn (APN wizard + reply parser) in
  * navcore_8_010_9369_limerick.cab (ttsystem).
  *
- * What the device does:
- *   1. APN_LOG request  (POST, body "data=..." / "setuptype=...")  -> reply must start with "APNOK"
- *   2. TEST_BIN request (plain GET, no body)                       -> THIS FILE
+ * Wire format that ttn's reply parser (0x25aee8) accepts, plain variant:
  *
- * What ttn checks on the TEST_BIN reply (state 0x0c):
- *   - the reply decodes to exactly ONE element
- *   - the element type is 7  (binary blob: '7' + 8 digit length + data)
- *   - the data is longer than 26 bytes
- *   - the first 27 bytes equal the magic string below
- *   -> only then the wizard moves on to its "success" state (9)
+ *   8 chars  decimal number, must be > 7       (used here: total body length)
+ *   4 chars  status code, decimal              (0, 200, 203, 204 count as success)
+ *   4 chars  number of elements, decimal
+ *   then that many typed elements:
+ *       1 char   type  ('7' = binary blob)
+ *       8 chars  decimal data length
+ *       n bytes  data
  *
- * Anything after the first 27 bytes is not inspected. A "bin" test is meant to
- * prove the APN/proxy passes binary data untouched, so the magic is followed by
- * all byte values 0x00-0xFF.
+ * The very first byte must be below 'A'; the letters A, B, C select other
+ * (wrapped / trailer) variants of the format, which are not used here.
  *
- * Add ?raw=1 to serve the bare payload without the '7'+length element header
- * (only useful for experimenting if your capture shows an unframed body).
+ * What the APN wizard then requires (state 0x0c):
+ *   - exactly 1 element, type 7, data longer than 26 bytes
+ *   - the first 27 bytes of the data equal the magic string below
+ *
+ * Add ?debug=1 to see the body as a readable hex dump instead.
  */
 
-// Make sure nothing alters the bytes on the way out.
 @ini_set('zlib.output_compression', '0');
 @ini_set('display_errors', '0');
 while (ob_get_level() > 0) { ob_end_clean(); }
 
-$magic = 'A9PxN7O3Kv-*26_`.?/e~=XxYq@';   // 27 bytes, compared with memcmp(..., 27)
+$magic = 'A9PxN7O3Kv-*26_`.?/e~=XxYq@';   // 27 bytes
 
-$payload = $magic;
+// data: magic + every byte value 0x00-0xFF (binary transparency test)
+$data = $magic;
 for ($i = 0; $i < 256; $i++) {
-    $payload .= chr($i);
+    $data .= chr($i);
 }
 
-if (isset($_GET['raw'])) {
-    $body = $payload;
-} else {
-    // typed element: type char '7', 8 character decimal length, then the data
-    $body = '7' . sprintf('%08d', strlen($payload)) . $payload;
+$element = '7' . sprintf('%08d', strlen($data)) . $data;
+$rest    = sprintf('%04d', 200)      // status
+         . sprintf('%04d', 1)        // element count
+         . $element;
+$body    = sprintf('%08d', 8 + strlen($rest)) . $rest;
+
+if (isset($_GET['debug'])) {
+    header('Content-Type: text/plain');
+    echo substr($body, 0, 40) . "\n\n" . chunk_split(bin2hex($body), 64, "\n");
+    exit;
 }
 
 header('Content-Type: application/octet-stream');
 header('Content-Length: ' . strlen($body));
 header('Cache-Control: no-cache, no-store, must-revalidate');
 header('Pragma: no-cache');
-header('Content-Encoding: identity');
 
 echo $body;
 exit;

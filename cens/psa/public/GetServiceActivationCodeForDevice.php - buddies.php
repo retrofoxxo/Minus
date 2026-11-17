@@ -1,0 +1,1 @@
+219     200 6   212    L14227K0122220     2140   To use this service you need to be registered at TomTom. Please go to www.tomtom.com: and visit the TomTom PLUS section to register for free216    Error code: 20301402         00
